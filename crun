@@ -1,0 +1,78 @@
+#!/bin/bash
+
+## crun = Cluster Run
+
+## command line arguments
+##
+
+POSITIONAL_ARGS=()
+SHOW=""
+
+# help
+if [ "$1" = "" ]; then
+	echo
+	echo "Dispatch and run a generic script over a cluster."
+	echo
+	echo " $0 -h|--help          display a more detailed help"
+	echo
+	exit 0
+fi
+
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+			echo
+			echo "Dispatch and run a generic script over a cluster."
+			echo
+			echo "Usage:"
+			echo " $0 -h|--help          display this help"
+			echo " $0 [options] script   dispatch a script to cluster"
+			echo
+			echo "Options:"
+			echo "-q, --quiet            suppress echo to screen"
+			exit 0
+      ;;
+    -q|--quiet)
+      shift
+			SHOW="no"
+      ;;
+    -*|--*)
+      echo "Unknown option $1"
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1") # save positional arg
+      shift # past argument
+      ;;
+  esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+## script (and its arguments) to dispatch
+CMD="$@"
+
+mayecho() {
+	if [ "$SHOW" != "no" ]; then
+		echo "$@"
+	fi
+}
+
+## dispatch command to nodes
+##
+
+mayecho -e "all:\tjob sending"
+
+export OMP_NUM_THREADS=$(nproc)
+export MKL_NUM_THREADS=$(nproc)
+
+NUMOFNODES=$(cat ./ip.list | wc -l)
+
+./rrun master "source /home/vagrant/miniconda3/etc/profile.d/conda.sh; \
+  conda activate jax; \
+  export OMPI_MCA_orte_launch_agent=/home/vagrant/miniconda3/envs/jax/bin/orted; \
+  cd /vagrant; \
+  mpirun -np $NUMOFNODES --map-by ppr:1:node --hostfile /vagrant/hostnames.list ./jaxrun $CMD"
+
+mayecho -e "all:\tjob sent"

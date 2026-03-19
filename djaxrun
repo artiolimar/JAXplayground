@@ -1,0 +1,87 @@
+#!/bin/bash
+
+## djaxrun = Distributed JAX Run
+
+## command line arguments
+##
+
+POSITIONAL_ARGS=()
+SHOW=""
+GRACE=""
+
+# help
+if [ "$1" = "" ]; then
+	echo
+	echo "Dispatch and run a JAX script over a cluster."
+	echo
+	echo " $0 -h|--help          display a more detailed help"
+	echo
+	exit 0
+fi
+
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+			echo
+			echo "Dispatch and run a JAX script over a cluster."
+			echo
+			echo "Usage:"
+			echo " $0 -h|--help          display this help"
+			echo " $0 [options] script   dispatch a JAX script to cluster"
+			echo
+			echo "Options:"
+			echo "-q, --quiet            suppress echo to screen"
+			echo "-n, --now              suppress 3 sec. grace period before dispatching"
+			exit 0
+      ;;
+    -q|--quiet)
+      shift
+			SHOW="no"
+      ;;
+    -n|--now)
+      shift
+			GRACE="no"
+      ;;
+    -*|--*)
+      echo "Unknown option $1"
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1") # save positional arg
+      shift # past argument
+      ;;
+  esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+## python script (and its arguments) to dispatch
+PY="$@"
+
+mayecho() {
+	if [ "$SHOW" != "no" ]; then
+		echo "$@"
+	fi
+}
+
+
+## grace period to cancel (3 sec.)
+#
+if [ "$GRACE" != "no" ]; then
+	mayecho "all:    job dispatching in 3 seconds"
+	for s in 3 2 1; do
+		mayecho "$s"
+		sleep 1
+	done
+fi
+
+## dispatch command to cluster
+#
+if [ "$SHOW" != "no" ]; then
+	SHOW=""
+else
+	SHOW="--quiet"
+fi
+
+./crun $SHOW python3 $PY

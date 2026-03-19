@@ -1,0 +1,15 @@
+#!/bin/bash
+
+cd /vagrant
+
+CMD="$@"              # JAX python script (and related args) to run (in the working dir)
+
+## conda init
+source /home/vagrant/miniconda3/etc/profile.d/conda.sh
+conda activate jax
+
+## run
+# FILE_OUT="$OMPI_COMM_WORLD_RANK" # output to mpi_rank.out
+FILE_OUT="$HOSTNAME" # output to hostname.out
+
+$CMD > "/vagrant/$FILE_OUT.out" 2> "/vagrant/$FILE_OUT.err"

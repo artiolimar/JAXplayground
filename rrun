@@ -1,0 +1,65 @@
+#!/bin/bash
+
+## rrun = Remote Run
+
+## command line arguments
+##
+
+POSITIONAL_ARGS=()
+
+# help
+if [ "$1" = "" ]; then
+	echo
+	echo "Dispatch and run a generic script over a node."
+	echo
+	echo " $0 -h|--help          display a more detailed help"
+	echo
+	exit 0
+fi
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+			echo
+			echo "Dispatch and run a generic script over a node."
+			echo
+			echo "Usage:"
+			echo " $0 -h|--help          display this help"
+			echo " $0 node script        dispatch 'script' to 'node'"
+			echo
+			exit 0
+      ;;
+    -*|--*)
+      echo "Unknown option $1"
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1") # save positional arg
+      shift # past argument
+      ;;
+  esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+# destination node
+NODE="$1"
+shift
+
+# (multiple) command(s) to dispatch
+CMD="$@"
+
+#RCMD="nohup $CMD 1> /vagrant/$NODE.log 2> /vagrant/$NODE.err & sleep 1"
+# nohup requires binaries, "source" command are not accepted
+# but nohup is not required, backgrounding with & is enough
+# command is in () because can be multiple commands
+# vagrant ssh behaves strangely: add a pause after backgrounding
+# see https://stackoverflow.com/questions/25331758/vagrant-ssh-c-and-keeping-a-background-process-running-after-connection-closed
+
+# remote command
+RCMD="($CMD) > /vagrant/$NODE.out 2> /vagrant/$NODE.err & sleep 3"
+
+#echo "$RCMD" # for debugging
+
+## send
+vagrant ssh "$NODE" -c "$RCMD"

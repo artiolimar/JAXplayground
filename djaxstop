@@ -1,0 +1,73 @@
+#!/bin/bash
+
+## djaxstop = Distributed JAX Stop
+
+## command line arguments
+##
+
+POSITIONAL_ARGS=()
+SHOW=""
+GRACE=""
+
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+			echo
+			echo "Stop all running JAX scripts over a cluster."
+			echo
+			echo "Usage:"
+			echo " $0 -h|--help          display this help"
+			echo " $0 [options]          dispatch a stop command to cluster"
+			echo
+			echo "Options:"
+			echo "-q, --quiet            suppress echo to screen"
+			echo "-n, --now              suppress 3 sec. grace period before dispatching"
+			exit 0
+      ;;
+    -q|--quiet)
+      shift
+			SHOW="no"
+      ;;
+    -n|--now)
+      shift
+			GRACE="no"
+      ;;
+    -*|--*)
+      echo "Unknown option $1"
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1") # save positional arg
+      shift # past argument
+      ;;
+  esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+mayecho() {
+	if [ "$SHOW" != "no" ]; then
+		echo "$@"
+	fi
+}
+
+## grace period to cancel (3 sec.)
+#
+if [ "$GRACE" != "no" ]; then
+	mayecho -e "all:\tjob killing in 3 seconds"
+	for s in 3 2 1; do
+		mayecho $s
+		sleep 1
+	done
+fi
+
+CLUSTER_PEERS=($(cat ./hosts.list | awk '{print $2}'))
+CLUSTER_PEERS=${CLUSTER_PEERS[@]}
+
+# dispatch kill command to nodes
+#
+for n in $CLUSTER_PEERS; do
+	mayecho -e "$n:\tjob killing"
+	./rrun "$n" "killall -KILL python3"
+done
